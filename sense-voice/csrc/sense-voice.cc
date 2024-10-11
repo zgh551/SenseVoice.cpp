@@ -820,15 +820,14 @@ int sense_voice_full_with_state(
         SENSE_VOICE_LOG_ERROR("%s: failed to encode\n", __func__);
         return -6;
     }
-//
-//
-//    // encode audio features starting at offset seek
+
+    // decode audio features starting at offset seek
     if (!sense_voice_decode_internal(*ctx, *state, params.n_threads)) {
         SENSE_VOICE_LOG_ERROR("%s: failed to decode\n", __func__);
         return -6;
     }
 
-    SENSE_VOICE_LOG_INFO("\n%s: decoder audio use %f s, rtf is %f. \n\n",
+    SENSE_VOICE_LOG_INFO("\n%s: encoder + decoder audio use %f s, rtf is %f. \n\n",
                          __func__,
                          (state->t_encode_us + state->t_decode_us) / 1e6,
                          (state->t_encode_us + state->t_decode_us) / (1e6 * state->duration));
@@ -936,3 +935,10 @@ int sense_voice_full_parallel(struct sense_voice_context * ctx,
     return ret;
 }
 
+int sense_voice_full_n_segments(struct sense_voice_context * ctx) {
+    return ctx->state->ids.size();
+}
+
+const char * sense_voice_full_get_segment_text(struct sense_voice_context * ctx, int i_segment) {
+    return ctx->state->ids[i_segment] != 0 ? ctx->vocab.id_to_token[ctx->state->ids[i_segment]].c_str() : """";
+}

@@ -136,7 +136,7 @@ bool sense_voice_decode_internal(sense_voice_context &ctx,
                                  sense_voice_state &state,
                                  const int n_threads) {
     const int64_t t_start_us = ggml_time_us();
-
+    state.ids.clear();
     // decoder
     {
         auto & sched = state.sched_decode.sched;
@@ -152,7 +152,6 @@ bool sense_voice_decode_internal(sense_voice_context &ctx,
             return false;
         }
 
-
         // set the input
         {
             struct ggml_tensor *encoder_out = ggml_graph_get_tensor(gf, "encoder_out");
@@ -166,18 +165,16 @@ bool sense_voice_decode_internal(sense_voice_context &ctx,
             ggml_tensor *argmax_logit = ggml_graph_node(gf, ggml_graph_n_nodes(gf) - 1);
 
             state.ids = std::vector<int>((int *)argmax_logit->data, (int *)argmax_logit->data + argmax_logit->ne[0]);
-
-            for(int id: state.ids){
-                if (id != 0) {
-                    printf("%s", ctx.vocab.id_to_token[id].c_str());
-                }
-            }
-            printf("\n");
+            // for(int id: state.ids){
+            //     if (id != 0) {
+            //         printf("%s", ctx.vocab.id_to_token[id].c_str());
+            //     }
+            // }
+            // printf("\n");
         }
-
     }
 //    ggml_tensor *logit = ggml_get_tensor(ctx)
-    state.t_decode_us += ggml_time_us() - t_start_us;
+    state.t_decode_us = ggml_time_us() - t_start_us;
 
     return true;
 }

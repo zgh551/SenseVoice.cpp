@@ -7,6 +7,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE STRING "")
 
 set(CMAKE_CXX_STANDARD 11)
 
+# Add path to modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No CMAKE_BUILD_TYPE given, default to Release")
@@ -50,6 +52,8 @@ option(SENSE_VOICE_COREML                "sense voice: enable Core ML framework"
 option(SENSE_VOICE_COREML_ALLOW_FALLBACK "sense voice: allow non-CoreML fallback" OFF)
 option(SENSE_VOICE_OPENVINO              "sense voice: support for OpenVINO"      OFF)
 
+option(SENSEVOICE_TINYALSA "SenseVoice: support for libtinyalsa" OFF)
+
 # override ggml options
 set(GGML_CCACHE             ${SENSE_VOICE_CCACHE})
 set(GGML_SANITIZE_THREAD    ${SENSE_VOICE_SANITIZE_THREAD})
@@ -67,7 +71,7 @@ if(GGML_USE_BLAS)
 endif()
 
 add_subdirectory(sense-voice)
-include_directories(${PROJECT_SOURCE_DIR}/sense-voice/csrc/third-party/ggml/include/ggml ${PROJECT_SOURCE_DIR}/sense-voice/csrc/third-party/ggml/src)
+include_directories(${PROJECT_SOURCE_DIR}/sense-voice/csrc/third-party/ggml/include ${PROJECT_SOURCE_DIR}/sense-voice/csrc/third-party/ggml/src)
 add_subdirectory(sense-voice/csrc/third-party/ggml)
 
 

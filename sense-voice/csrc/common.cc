@@ -4,7 +4,10 @@
 //
 // logging
 //
-
+#include <dirent.h>
+#include <pthread.h>
+#include <signal.h>
+#include <atomic>
 #include "common.h"
 #include <stdarg.h>
 #ifdef __GNUC__
@@ -95,4 +98,101 @@ struct sense_voice_full_params sense_voice_full_default_params(enum sense_voice_
     }
 
     return result;
+}
+
+void high_pass_filter(std::vector<double> & data, float cutoff, float sample_rate) {
+    const float rc = 1.0f / (2.0f * M_PI * cutoff);
+    const float dt = 1.0f / sample_rate;
+    const float alpha = dt / (rc + dt);
+
+    float y = data[0];
+
+    for (size_t i = 1; i < data.size(); i++) {
+        y = alpha * (y + data[i] - data[i - 1]);
+        data[i] = y;
+    }
+}
+
+bool vad_simple(std::vector<double> & pcmf32, int sample_rate, int last_ms, float vad_thold, float freq_thold, bool verbose) {
+    const int n_samples      = pcmf32.size();
+    const int n_samples_last = (sample_rate * last_ms) / 1000;
+
+    if (n_samples_last >= n_samples) {
+        // not enough samples - assume no speech
+        return false;
+    }
+
+    if (freq_thold > 0.0f) {
+        high_pass_filter(pcmf32, freq_thold, sample_rate);
+    }
+
+    float energy_all  = 0.0f;
+    float energy_last = 0.0f;
+
+    for (int i = 0; i < n_samples; i++) {
+        energy_all += fabsf(pcmf32[i]);
+
+        if (i >= n_samples - n_samples_last) {
+            energy_last += fabsf(pcmf32[i]);
+        }
+    }
+
+    energy_all  /= n_samples;
+    energy_last /= n_samples_last;
+
+    if (verbose) {
+        fprintf(stderr, "%s: energy_all: %f, energy_last: %f, vad_thold: %f, freq_thold: %f\n", __func__, energy_all, energy_last, vad_thold, freq_thold);
+    }
+
+    if (energy_last > vad_thold*energy_all) {
+        return false;
+    }
+
+    return true;
+}
+
+std::atomic<bool> run_flag(true);
+
+bool getSignal(void) { return run_flag.load(); }
+
+void signal_hdl(int32_t sig) { run_flag.store(false); }
+
+void* IntSingleFn(void* arg) {
+    int err   = 0;
+    int signo = 0;
+
+    sigset_t waitset, oldset;
+
+    sigemptyset(&waitset);
+    sigaddset(&waitset, SIGINT);
+    sigaddset(&waitset, SIGTSTP);  // ctrl-z
+
+    if ((err = pthread_sigmask(SIG_BLOCK, &waitset, &oldset)) != 0) {
+        fprintf(stderr, "pthread_sigmask error: %d\n", err);
+    }
+    while (run_flag.load()) {
+        printf("sub thread(%lu) sigwait for signal...\n", pthread_self());
+        err = sigwait(&waitset, &signo);
+        if (err != 0) {
+            perror("sigwait error");
+            exit(err);
+        }
+        signal_hdl(signo);
+    }
+    return nullptr;
+}
+
+void HandleCtrlC(void) {
+    pthread_t iThread;
+    sigset_t mask, oldmask;
+    int err;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTSTP);
+    if ((err = pthread_sigmask(SIG_BLOCK, &mask, &oldmask)) != 0) {
+        fprintf(stderr, "pthread_sigmask error: %d\n", err);
+    }
+    if ((err = pthread_create(&iThread, NULL, IntSingleFn, NULL)) != 0) {
+        fprintf(stderr, "pthread_sigmask error: %d\n", err);
+    }
 }

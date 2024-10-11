@@ -562,7 +562,7 @@ bool sense_voice_encode_internal(sense_voice_context &ctx,
         }
 
     }
-    state.t_encode_us += ggml_time_us() - t_start_us;
+    state.t_encode_us = ggml_time_us() - t_start_us;
     return true;
 }
 

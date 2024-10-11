@@ -23,4 +23,8 @@ int sense_voice_full_parallel(struct sense_voice_context * ctx,
                               int n_samples,
                               int n_processors);
 void sense_voice_free_state(struct sense_voice_state * state);
+
+int sense_voice_full_n_segments(struct sense_voice_context * ctx);
+const char * sense_voice_full_get_segment_text(struct sense_voice_context * ctx, int i_segment);
+
 #endif//SENSEVOICE_CPP_SENSE_VOICE_H
